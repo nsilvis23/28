@@ -62,6 +62,22 @@ def find_oldest_issue(subject, all_issues):
     return oldest_issue
 
 
+def comment_on_issue(issue_number, body):
+    """Post a comment on the given issue."""
+    url = (
+        f"{GITHUB_API_URL}/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}/comments"
+    )
+    response = requests.post(url, headers=headers, json={"body": body})
+    response.raise_for_status()
+
+
+def close_issue(issue_number):
+    """Close the given issue."""
+    url = f"{GITHUB_API_URL}/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}"
+    response = requests.patch(url, headers=headers, json={"state": "closed"})
+    response.raise_for_status()
+
+
 def main():
     if not TOKEN:
         print("Error: Missing GITHUB_TOKEN environment variable. Please check your .env file.")
@@ -92,7 +108,23 @@ def main():
             f"Oldest issue: {oldest_issue['html_url']} (created on"
             f" {oldest_issue['created_at']})"
         )
+        confirm = (
+            input("Comment on and close newer issues? [y/N]: ")
+            .strip()
+            .lower()
+        )
+        if confirm not in ("y", "yes"):
+            print("Skipping group.")
+            continue
 
+        for issue in issues:
+            if issue["number"] == oldest_issue["number"]:
+                continue
+
+            comment = f"Closing as duplicate of #{oldest_issue['number']}"
+            comment_on_issue(issue["number"], comment)
+            close_issue(issue["number"])
+            print(f"Closed issue #{issue['number']}")
 
 if __name__ == "__main__":
     main()
